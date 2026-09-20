@@ -51,7 +51,7 @@ ${c.cyan}${c.bold}   █████╗ ██╗   ${c.brightMagenta}███�
   ${c.bold}  ┌─────────────────────────────────────────────────────────────┐
     │  ${c.brightWhite}$ ${c.green}aaf watch${c.reset}${c.bold}                                            │
     └─────────────────────────────────────────────────────────────┘${c.reset}
-  ${c.gray}  ★ star: ${c.dim}github.com/deveshmishra11291/ai-agent-firewall${c.gray} →${c.reset}
+  ${c.gray}  ★ star: ${c.dim}github.com/devmishra2049/ai-agent-firewall${c.gray} →${c.reset}
 
   ${c.cyan}⚡ [PREFLIGHT]${c.reset} ${c.dim}Zero-Trust Sandbox Perimeter Armed${c.reset}
   ${c.magenta}🔒 [SIGNATURES]${c.reset} ${c.dim}39 Real-Time Zero-Latency Threat Rules Loaded${c.reset}

@@ -41,13 +41,13 @@ Install the CLI globally into your terminal:
 
 ```bash
 # Option 1: macOS & Linux (Terminal)
-curl -fsSL https://raw.githubusercontent.com/deveshmishra11291/ai-agent-firewall/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/devmishra2049/ai-agent-firewall/main/install.sh | bash
 
 # Option 2: Windows (PowerShell)
-irm https://raw.githubusercontent.com/deveshmishra11291/ai-agent-firewall/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/devmishra2049/ai-agent-firewall/main/install.ps1 | iex
 
 # Option 3: Manual Clone & Link
-git clone https://github.com/deveshmishra11291/ai-agent-firewall.git ~/.agent-firewall
+git clone https://github.com/devmishra2049/ai-agent-firewall.git ~/.agent-firewall
 cd ~/.agent-firewall/cli && npm link
 ```
 
@@ -72,7 +72,7 @@ $ agent-firewall run "python my_agent.py"
   ┌─────────────────────────────────────────────────────────────┐
   │  $ aaf watch                                                │
   └─────────────────────────────────────────────────────────────┘
-  ★ star: github.com/deveshmishra11291/ai-agent-firewall →
+  ★ star: github.com/devmishra2049/ai-agent-firewall →
 
   ⚡ [PREFLIGHT]  Zero-Trust Sandbox Perimeter Armed
   🔒 [SIGNATURES] 39 Real-Time Zero-Latency Threat Rules Loaded
@@ -234,7 +234,7 @@ Before code is ever compiled or executed, `security.py` analyzes the Abstract Sy
 
 #### 1. Clone & Install CLI Dependencies
 ```powershell
-git clone https://github.com/deveshmishra11291/ai-agent-firewall.git
+git clone https://github.com/devmishra2049/ai-agent-firewall.git
 cd ai-agent-firewall
 
 # Install Threat Hunter CLI
@@ -283,7 +283,7 @@ npm run dev
 
 #### 1. Clone & Install CLI Dependencies
 ```bash
-git clone https://github.com/deveshmishra11291/ai-agent-firewall.git
+git clone https://github.com/devmishra2049/ai-agent-firewall.git
 cd ai-agent-firewall
 
 cd cli && npm install && cd ..

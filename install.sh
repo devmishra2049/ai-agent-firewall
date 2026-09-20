@@ -2,7 +2,7 @@
 set -e
 
 # AI Agent Firewall Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/deveshmishra11291/ai-agent-firewall/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/devmishra2049/ai-agent-firewall/main/install.sh | bash
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -30,7 +30,7 @@ if [ "$NODE_VERSION" -lt 18 ]; then
 fi
 
 INSTALL_DIR="$HOME/.agent-firewall"
-REPO_URL="https://github.com/deveshmishra11291/ai-agent-firewall.git"
+REPO_URL="https://github.com/devmishra2049/ai-agent-firewall.git"
 
 echo -e "Installing AI Agent Firewall into ${BOLD}${INSTALL_DIR}${NC}..."
 

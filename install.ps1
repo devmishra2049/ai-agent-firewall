@@ -1,5 +1,5 @@
 # AI Agent Firewall Installer for Windows (PowerShell)
-# Usage: irm https://raw.githubusercontent.com/deveshmishra11291/ai-agent-firewall/main/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/devmishra2049/ai-agent-firewall/main/install.ps1 | iex
 
 Write-Host "┌──────────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
 Write-Host "│  🛡️  AI AGENT FIREWALL — WINDOWS INSTALLER                    │" -ForegroundColor Cyan
@@ -13,7 +13,7 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 }
 
 $InstallDir = "$HOME\.agent-firewall"
-$RepoUrl = "https://github.com/deveshmishra11291/ai-agent-firewall.git"
+$RepoUrl = "https://github.com/devmishra2049/ai-agent-firewall.git"
 
 Write-Host "Installing AI Agent Firewall into $InstallDir..." -ForegroundColor Yellow
 
