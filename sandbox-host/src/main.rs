@@ -26,6 +26,12 @@ struct Policy {
     process_execution: bool,
     #[serde(default)]
     dynamic_execution: bool,
+    #[serde(default = "default_fuel_limit")]
+    fuel_limit: Option<u64>,
+}
+
+fn default_fuel_limit() -> Option<u64> {
+    Some(10_000_000)
 }
 
 fn default_decision() -> String {
@@ -33,13 +39,13 @@ fn default_decision() -> String {
 }
 
 const OUTPUT_CAPACITY: usize = 1024 * 1024;
-const SANDBOX_FS_DIR: &str = "/tmp/agent-firewall-sandbox-fs";
 
 fn execute_wasm(
     module_path: &str,
     func_name: &str,
     fuel_limit: u64,
     policy: &Policy,
+    sandbox_fs_dir: &std::path::Path,
 ) -> ExecutionResult {
     if policy.decision != "ALLOW" {
         return ExecutionResult {
@@ -59,6 +65,12 @@ fn execute_wasm(
 
     let mut config = Config::new();
     config.consume_fuel(true);
+    let mut pool = wasmtime::PoolingAllocationConfig::default();
+    pool.max_memory_size(32 * 1024 * 1024); // 32MB linear memory ceiling per instance
+    pool.total_memories(100);
+    pool.total_core_instances(100);
+    pool.total_tables(100);
+    config.allocation_strategy(wasmtime::InstanceAllocationStrategy::Pooling(pool));
 
     let engine = match Engine::new(&config) {
         Ok(e) => e,
@@ -79,7 +91,7 @@ fn execute_wasm(
     wasi_builder.stderr(stderr.clone());
 
     if policy.filesystem_read || policy.filesystem_write {
-        if let Err(e) = std::fs::create_dir_all(SANDBOX_FS_DIR) {
+        if let Err(e) = std::fs::create_dir_all(sandbox_fs_dir) {
             return ExecutionResult {
                 success: false,
                 error: Some(format!("Failed to prepare sandbox directory: {}", e)),
@@ -93,7 +105,7 @@ fn execute_wasm(
         } else {
             FsPerms::ReadOnly
         };
-        if let Err(e) = wasi_builder.preopened_dir(SANDBOX_FS_DIR, "/sandbox", fs_perms) {
+        if let Err(e) = wasi_builder.preopened_dir(sandbox_fs_dir, "/sandbox", fs_perms) {
             return ExecutionResult {
                 success: false,
                 error: Some(format!("Failed to mount sandbox directory: {}", e)),
@@ -228,6 +240,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut wasm_path = String::new();
     let mut policy_json = String::new();
+    let mut session_dir = String::new();
+    let mut session_id = String::new();
 
     let mut i = 1;
     while i < args.len() {
@@ -239,6 +253,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--policy" => {
                 i += 1;
                 policy_json = args[i].clone();
+            }
+            "--session-dir" => {
+                i += 1;
+                session_dir = args[i].clone();
+            }
+            "--session-id" => {
+                i += 1;
+                session_id = args[i].clone();
             }
             _ => {
                 eprintln!("Unknown argument: {}", args[i]);
@@ -257,9 +279,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         policy_json = "{}".to_string();
     }
 
+    // Resolve isolated session directory
+    let fs_path = if !session_dir.is_empty() {
+        std::path::PathBuf::from(session_dir)
+    } else if !session_id.is_empty() {
+        std::env::temp_dir()
+            .join("agent-firewall-sessions")
+            .join(session_id)
+            .join("fs")
+    } else {
+        // Fallback: Generate an instant nanosecond-unique ephemeral path
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let unique_tag = format!("session_{}_{}", std::process::id(), now);
+        std::env::temp_dir()
+            .join("agent-firewall-sessions")
+            .join(unique_tag)
+            .join("fs")
+    };
+
     let policy: Policy = serde_json::from_str(&policy_json)?;
 
-    let result = execute_wasm(&wasm_path, "_start", 100_000_000, &policy);
+    let fuel_limit = policy.fuel_limit.unwrap_or(10_000_000);
+    let result = execute_wasm(&wasm_path, "_start", fuel_limit, &policy, &fs_path);
 
     println!("{}", serde_json::to_string(&result)?);
 

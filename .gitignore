@@ -24,3 +24,7 @@ venv/
 *.sqlite
 *.sqlite3
 .DS_Store
+
+# AI Agent Firewall Quarantine & Generated Artifacts
+.firewall-quarantine/
+**/.firewall-quarantine/

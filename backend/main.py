@@ -126,10 +126,10 @@ def execute(request: ExecuteRequest):
         prompt=request.prompt,
         code=code,
     )
-    policy = create_policy(security)
+    policy = create_policy(security, code=code)
 
     # 4. Compile and execute only if the policy explicitly allows it.
-    sandbox_result = call_sandbox(code, policy)
+    sandbox_result = call_sandbox(code, policy, language=language)
     return {
         "language": language,
         "code": code,
@@ -143,6 +143,7 @@ def execute(request: ExecuteRequest):
 class ExecuteCodeRequest(BaseModel):
     code: str
     preset: str | None = None
+    language: str | None = None
 
 
 def _risk_level(risk_score: int) -> str:
@@ -175,7 +176,7 @@ def execute_code(request: ExecuteCodeRequest):
     # directly, reusing the exact same security/policy/sandbox pipeline
     # that /api/execute uses for LLM-generated code.
     security = analyze_request(prompt="", code=request.code)
-    policy = create_policy(security)
+    policy = create_policy(security, code=request.code)
 
     risk_level = _risk_level(security["risk_score"])
     timestamp = datetime.utcnow().isoformat() + "Z"
@@ -207,7 +208,7 @@ def execute_code(request: ExecuteCodeRequest):
             "policy": policy,
         }
 
-    sandbox_result = call_sandbox(request.code, policy)
+    sandbox_result = call_sandbox(request.code, policy, language=request.language or "auto")
     exec_time_ms = sandbox_result.get("execution_time_ms", 0)
     fuel = sandbox_result.get("fuel_used", 0)
     fs_access = "Allowed" if (policy["filesystem_read"] or policy["filesystem_write"]) else "Denied"

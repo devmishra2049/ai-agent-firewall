@@ -294,6 +294,67 @@ const RAW_RULES = [
         "i"
       ]
     ]
+  },
+  {
+    "id": "PY-SINK-001",
+    "category": "Dynamic Execution",
+    "title": "Python Dynamic Execution & Deserialization Sink",
+    "severity": "CRITICAL",
+    "riskScore": 95,
+    "action": "Block execution and isolate workspace",
+    "detail": "Detected dynamic execution sink (eval, exec, __import__, compile, importlib, or pickle deserialization).",
+    "patternsEnc": [
+      [
+        "XGIoZXZhbHxleGVjfGNvbXBpbGV8X19pbXBvcnRfXylccypcKA==",
+        "i"
+      ],
+      [
+        "XGJpbXBvcnRsaWJcLihpbXBvcnRfbW9kdWxlfGludmFsaWRhdGVfY2FjaGVzKVxzKlwo",
+        "i"
+      ],
+      [
+        "XGIocGlja2xlfG1hcnNoYWwpXC4obG9hZHM/fGR1bXApXHMqXCg=",
+        "i"
+      ]
+    ]
+  },
+  {
+    "id": "PY-BRIDGE-001",
+    "category": "Native Bridge Infiltration",
+    "title": "Low-Level Native Bridge / Memory Access",
+    "severity": "CRITICAL",
+    "riskScore": 90,
+    "action": "Block execution immediately",
+    "detail": "Detected ctypes or low-level native library invocation bypassing sandbox constraints.",
+    "patternsEnc": [
+      [
+        "XGIoY3R5cGVzfHdpbnJlZylcYg==",
+        "i"
+      ],
+      [
+        "XGJjdHlwZXNcLihDRExMfHdpbmRsbHxvbGVkbGwpXHMqXCg=",
+        "i"
+      ]
+    ]
+  },
+  {
+    "id": "DEST-002",
+    "category": "Filesystem Destruction",
+    "title": "Python Destructive Filesystem Operations",
+    "severity": "CRITICAL",
+    "riskScore": 95,
+    "action": "Block filesystem mutation",
+    "detail": "Detected destructive directory removal or unlinking (shutil.rmtree, os.unlink, os.rmdir).",
+    "patternsEnc": [
+      [
+        "XGJzaHV0aWxcLihybXRyZWV8bW92ZSlccypcKA==",
+        "i"
+      ],
+      [
+        "XGJvc1wuKHJlbW92ZXx1bmxpbmt8cm1kaXIpXHMqXCg=",
+        "i"
+      ]
+    ]
   }
 ];
 

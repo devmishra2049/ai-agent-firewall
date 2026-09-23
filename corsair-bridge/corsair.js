@@ -100,17 +100,20 @@ async function processPullRequest(ctx, result) {
     }
 
     const files = await filesRes.json();
-    const rsFiles = (Array.isArray(files) ? files : []).filter(f => f.filename?.endsWith('.rs'));
+    const codeFiles = (Array.isArray(files) ? files : []).filter(f =>
+      f.filename?.endsWith('.rs') || f.filename?.endsWith('.py')
+    );
 
-    if (rsFiles.length === 0) {
-      console.log('[firewall] No .rs files found in PR. Skipping code execution analysis.');
+    if (codeFiles.length === 0) {
+      console.log('[firewall] No .rs or .py files found in PR. Skipping code execution analysis.');
       return;
     }
 
-    console.log(`[firewall] Found ${rsFiles.length} Rust file(s) to analyze:`, rsFiles.map(f => f.filename));
+    console.log(`[firewall] Found ${codeFiles.length} file(s) to analyze:`, codeFiles.map(f => f.filename));
 
-    for (const file of rsFiles) {
-      console.log(`[firewall] Fetching content for: ${file.filename} (ref: ${pr.head.sha})`);
+    for (const file of codeFiles) {
+      const language = file.filename.endsWith('.py') ? 'python' : 'rust';
+      console.log(`[firewall] Fetching content for: ${file.filename} (${language}) (ref: ${pr.head.sha})`);
       const fileContentRes = await corsair.github.api.repositories.getContent({
         owner,
         repo: repoName,
@@ -125,13 +128,13 @@ async function processPullRequest(ctx, result) {
 
       const code = Buffer.from(fileContentRes.content, fileContentRes.encoding || 'base64').toString('utf-8');
 
-      console.log(`[firewall] Sending code from ${file.filename} to firewall backend (http://localhost:8000/api/execute-code)...`);
+      console.log(`[firewall] Sending ${language} code from ${file.filename} to firewall backend (http://localhost:8000/api/execute-code)...`);
       let firewallData;
       try {
         const firewallRes = await fetch('http://localhost:8000/api/execute-code', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, language }),
         });
         firewallData = await firewallRes.json();
       } catch (err) {
@@ -146,26 +149,36 @@ async function processPullRequest(ctx, result) {
 
       // 2. Post review comment to GitHub PR
       let commentBody = '';
+      const runnerLabel = language === 'python' ? 'Python Ephemeral Jail' : 'Rust WASI (Wasmtime 48.0)';
+
       if (firewallData.status === 'blocked') {
         const threatsList = (firewallData.threats || [])
           .map(t => `- 🚨 **${t.title}** (${t.severity}): ${t.detail}`)
           .join('\n');
 
+        const divergenceNotice = firewallData.security?.semantic_divergence
+          ? `\n> ⚠️ **CRITICAL SEMANTIC DIVERGENCE**: Unprompted high-risk capabilities detected outside intent boundaries.\n`
+          : '';
+
         commentBody = `### 🚨 AI Agent Firewall: BLOCKED\n\n` +
-          `The code changes in \`${file.filename}\` were **blocked** by security policy.\n\n` +
-          `* **Risk Score**: ${firewallData.security?.risk_score ?? 'High'}\n` +
-          `* **Decision**: \`${firewallData.policy?.decision ?? 'BLOCK'}\`\n\n` +
-          `#### Threats Detected:\n${threatsList || '- Untrusted capability detected.'}`;
+          `The code changes in \`${file.filename}\` (${language.toUpperCase()}) were **blocked** by zero-trust security policy.\n\n` +
+          `* **Risk Score**: \`${firewallData.security?.risk_score ?? 'High'}/100\`\n` +
+          `* **Decision**: \`${firewallData.policy?.decision ?? 'BLOCK'}\`\n` +
+          `* **Sandbox Architecture**: \`${runnerLabel}\`\n` +
+          `${divergenceNotice}\n` +
+          `#### Threats Detected:\n${threatsList || '- Untrusted capability detected.'}\n\n` +
+          `*Execution was intercepted before CPU cycles were allocated.*`;
       } else if (firewallData.status === 'success') {
         commentBody = `### ✅ AI Agent Firewall: PASSED\n\n` +
-          `The code changes in \`${file.filename}\` passed policy evaluation and executed safely in the sandbox.\n\n` +
-          `* **Risk Score**: ${firewallData.security?.risk_score ?? 0} (Low)\n` +
+          `The code changes in \`${file.filename}\` (${language.toUpperCase()}) passed policy preflight checks and executed safely in the sandbox.\n\n` +
+          `* **Risk Score**: \`${firewallData.security?.risk_score ?? 0}/100\` (Low)\n` +
           `* **Decision**: \`ALLOW\`\n` +
-          `* **Execution Fuel**: ${firewallData.details?.fuelConsumed ?? 'N/A'}\n` +
-          `* **Execution Time**: ${firewallData.details?.executionTime ?? 'N/A'}`;
+          `* **Sandbox Architecture**: \`${runnerLabel}\`\n` +
+          `* **Execution Fuel**: \`${firewallData.details?.fuelConsumed ?? 'N/A'}\`\n` +
+          `* **Execution Time**: \`${firewallData.details?.executionTime ?? 'N/A'}\``;
       } else {
         commentBody = `### ⚠️ AI Agent Firewall: Warning\n\n` +
-          `Analysis completed with status \`${firewallData.status}\`.\n` +
+          `Analysis completed with status \`${firewallData.status}\` for \`${file.filename}\`.\n` +
           `Details: ${firewallData.logs || firewallData.message || 'Check firewall backend logs.'}`;
       }
 

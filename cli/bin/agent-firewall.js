@@ -135,8 +135,9 @@ function handleStatus(config) {
   console.log(`  Threshold Risk Score:  ${c.cyan}${config.blockOnRiskScore}/100${c.reset}`);
   console.log(`  Auto-Quarantine:       ${config.quarantineBlocked ? c.green + 'ENABLED' : c.yellow + 'DISABLED'}${c.reset}`);
   console.log(`  Cloud Backend:         ${c.cyan}${config.cloudSync?.backendUrl || 'https://ai-agent-firewall.onrender.com'}${c.reset}`);
-  console.log(`  WASI Sandbox Host:     ${c.green}ONLINE (Wasmtime 48.0)${c.reset}`);
-  console.log(`  Threat Signatures:     ${c.green}39 Built-in Zero-Trust Heuristics${c.reset}\n`);
+  console.log(`  Sandbox Host:          ${c.green}ONLINE (Rust WASI Wasmtime 48.0 + Python Jail)${c.reset}`);
+  console.log(`  Threat Signatures:     ${c.green}42 Zero-Trust Heuristics + Swarm Cache${c.reset}`);
+  console.log(`  Preflight Gate:        ${c.green}Dual AST & Semantic Divergence Gate${c.reset}\n`);
 }
 
 function handleInit() {
@@ -152,22 +153,42 @@ function handleInit() {
   }
 }
 
-async function handleTest(testInput, config) {
+async function handleTest(testArgs, config) {
   banner();
-  if (!testInput) {
-    console.error(`  ${c.red}Error: Provide a prompt or code string to test.${c.reset}`);
+  if (!testArgs || testArgs.length === 0) {
+    console.error(`  ${c.red}Error: Provide a prompt and/or code string to test.${c.reset}`);
     console.log(`  Example: ${c.bold}agent-firewall test "calculate fibonacci numbers"${c.reset}`);
+    console.log(`  Example: ${c.bold}agent-firewall test "calculate fibonacci" "import os; os.system('whoami')"\n${c.reset}`);
     process.exit(1);
   }
 
+  let prompt = '';
+  let code = '';
+
+  if (testArgs.length >= 2) {
+    prompt = testArgs[0];
+    code = testArgs.slice(1).join(' ');
+  } else {
+    code = testArgs[0];
+  }
+
   console.log(`  ${badge('TEST', 'cyan')} Evaluating input against security policies:`);
-  console.log(`  ${c.dim}"${testInput}"${c.reset}\n`);
+  if (prompt) {
+    console.log(`  Prompt: ${c.dim}"${prompt}"${c.reset}`);
+  }
+  console.log(`  Code:   ${c.dim}"${code}"${c.reset}\n`);
 
   const hunter = new ThreatHunter();
-  const report = hunter.scan(testInput, 'test-input');
+  const report = hunter.scan(code, 'test-input', prompt);
 
-  console.log(`  Security Verdict:   ${report.verdict === 'ALLOW' ? c.green + 'ALLOWED (LOW RISK)' : c.brightRed + 'BLOCKED'}${c.reset}`);
-  console.log(`  Risk Score:         ${report.riskScore}/100`);
+  console.log(`  Security Verdict:     ${report.verdict === 'ALLOW' ? c.green + 'ALLOWED (LOW RISK)' : c.brightRed + 'BLOCKED'}${c.reset}`);
+  console.log(`  Risk Score:           ${report.riskScore}/100`);
+  if (prompt) {
+    console.log(`  Semantic Divergence:  ${report.semanticDivergence ? c.red + 'DETECTED (CRITICAL)' : c.green + 'NONE (ALIGNED)'}${c.reset}`);
+  }
+  if (report.cacheHit) {
+    console.log(`  Swarm Threat Cache:   ${c.yellow}HIT (<0.01ms disarm)${c.reset}`);
+  }
 
   if (report.threats.length > 0) {
     console.log(`\n  ${c.bold}Threat Findings:${c.reset}`);
@@ -175,7 +196,7 @@ async function handleTest(testInput, config) {
       console.log(`    ${c.red}• [${t.severity}] ${t.title}${c.reset}: ${t.detail}`);
     });
   } else {
-    console.log(`  Capability Gate:    ${c.green}Passed Preflight Check. Safe for WASI Sandbox Execution.${c.reset}`);
+    console.log(`  Capability Gate:      ${c.green}Passed Preflight Check. Safe for WASI Sandbox Execution.${c.reset}`);
   }
   console.log();
 }
@@ -230,7 +251,7 @@ function main() {
     }
 
     case 'test': {
-      handleTest(args.slice(1).join(' '), config);
+      handleTest(args.slice(1), config);
       break;
     }
 
