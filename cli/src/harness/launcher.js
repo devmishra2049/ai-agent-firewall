@@ -73,8 +73,11 @@ function loadWorkspaceEnvVars(cwd) {
           const [k, ...rest] = trimmed.split('=');
           const key = k.trim();
           const val = rest.join('=').trim().replace(/^['"]|['"]$/g, '');
-          if (key === 'GROQ_API_KEY' && val && !process.env.GROQ_API_KEY) {
+          if (key === 'GROQ_API_KEY' && val) {
             extraEnv.GROQ_API_KEY = val;
+          }
+          if (key === 'OPENAI_MODEL' && val && !val.includes(':free')) {
+            extraEnv.OPENAI_MODEL = val;
           }
         }
       } catch {
@@ -82,7 +85,73 @@ function loadWorkspaceEnvVars(cwd) {
       }
     }
   }
+  if (!extraEnv.OPENAI_MODEL) {
+    extraEnv.OPENAI_MODEL = 'openai/gpt-oss-120b';
+  }
   return extraEnv;
+}
+
+/**
+ * Create a clean, high-speed Hermes profile inside .firewall-quarantine/profiles/firewall-fast
+ * so Hermes uses Groq LPU (<1s latency) and avoids any corrupted ~/.hermes/state.db warning.
+ */
+function ensureFastHermesProfile(cwd, groqKey, groqModel = 'openai/gpt-oss-120b') {
+  let profileDir = path.join(cwd, '.firewall-quarantine', 'profiles', 'firewall-fast');
+  try {
+    fs.mkdirSync(profileDir, { recursive: true });
+  } catch {
+    profileDir = path.join(os.tmpdir(), 'ai-agent-firewall-shims', 'profiles', 'firewall-fast');
+    fs.mkdirSync(profileDir, { recursive: true });
+  }
+
+  const modelBlock = groqKey
+    ? `model:
+  default: ${groqModel}
+  provider: custom:groq
+  base_url: https://api.groq.com/openai/v1
+  api_key: "${groqKey}"
+providers:
+  groq:
+    name: Groq LPU
+    base_url: https://api.groq.com/openai/v1
+    api_key: "${groqKey}"
+    key_env: GROQ_API_KEY
+    default_model: ${groqModel}`
+    : `model:\n  default: stepfun/step-3.7-flash:free\n  provider: nous\n  base_url: https://inference-api.nousresearch.com/v1`;
+
+  const configYaml = `${modelBlock}
+agent:
+  max_turns: 50
+  verbose: false
+  reasoning_effort: low
+terminal:
+  backend: local
+  cwd: .
+  timeout: 60
+memory:
+  memory_enabled: false
+  user_profile_enabled: false
+onboarding:
+  seen:
+    tool_progress_prompt: true
+    busy_input_prompt: true
+    profile_build_offered: true
+`;
+
+  try {
+    fs.writeFileSync(path.join(profileDir, 'config.yaml'), configYaml, 'utf8');
+    if (groqKey) {
+      fs.writeFileSync(
+        path.join(profileDir, '.env'),
+        `GROQ_API_KEY=${groqKey}\nOPENAI_API_KEY=${groqKey}\nOPENAI_MODEL=${groqModel}\n`,
+        'utf8'
+      );
+    }
+  } catch {
+    // ignore
+  }
+
+  return profileDir;
 }
 
 /**
@@ -92,14 +161,21 @@ function getAgentCatalog(cwd, config) {
   const agentPyPath = path.resolve(__dirname, '../../../agent.py');
   const hasAgentPy = fs.existsSync(agentPyPath);
   const hermesBin = findBinary('hermes') || 'hermes';
+  const extraEnv = loadWorkspaceEnvVars(cwd);
+  const groqKey = extraEnv.GROQ_API_KEY || process.env.GROQ_API_KEY || '';
+  const groqModel = extraEnv.OPENAI_MODEL || 'openai/gpt-oss-120b';
+  const hermesCmd = groqKey
+    ? `${hermesBin} --provider custom:groq -m ${groqModel} --yolo --ignore-rules --toolsets file,terminal`
+    : `${hermesBin} --yolo --ignore-rules --toolsets file,terminal`;
 
+  const aiderBin = findBinary('aider') || 'aider';
   const builtinCatalog = [
     {
       key: '1',
-      name: 'Hermes Agent (Fast Coding Mode)',
-      desc: 'Nous Research CLI stripped of skill bloat (--ignore-rules --toolsets file,terminal)',
+      name: 'Hermes Agent (Fast Coding Mode • Groq LPU)',
+      desc: 'Nous Research CLI powered by Groq LPU (<1s turns, 6 core tools, 0 skill bloat)',
       bin: 'hermes',
-      cmd: `${hermesBin} --ignore-rules --toolsets file,terminal`,
+      cmd: hermesCmd,
       installCmd: null,
     },
     {
@@ -120,11 +196,11 @@ function getAgentCatalog(cwd, config) {
     },
     {
       key: '4',
-      name: 'Aider AI Pair Programmer',
-      desc: 'Open-source terminal pair programmer powered by free Groq LPU',
+      name: 'Aider AI Pair Programmer (Groq LPU • Fast)',
+      desc: 'Famous open-source terminal coding agent powered by Groq (openai/gpt-oss-120b)',
       bin: 'aider',
-      cmd: 'aider --model groq/openai/gpt-oss-120b',
-      installCmd: 'brew install aider',
+      cmd: `${aiderBin} --model groq/${groqModel} --map-tokens 0 --no-git --no-auto-commits --yes-always --no-show-model-warnings --no-analytics`,
+      installCmd: 'python3 -m pip install -U aider-install && aider-install',
     },
     {
       key: '5',
@@ -242,6 +318,11 @@ function spawnAgentInFirewall(agentItem, inspector, targetDir, config, onAgentEx
   // 2. Setup synchronous subprocess & script shims in PATH
   const shimDir = setupShims(targetDir);
   const extraEnv = loadWorkspaceEnvVars(targetDir);
+  const groqKey = extraEnv.GROQ_API_KEY || process.env.GROQ_API_KEY || '';
+  const groqModel = extraEnv.OPENAI_MODEL || 'openai/gpt-oss-120b';
+  if (agentItem.bin === 'hermes' || agentItem.cmd.includes('hermes')) {
+    extraEnv.HERMES_HOME = ensureFastHermesProfile(targetDir, groqKey, groqModel);
+  }
   const homeBin = path.join(os.homedir(), '.local', 'bin');
   const currentPath = process.env.PATH || '';
   const sandboxedPath = [shimDir, homeBin, '/opt/homebrew/bin', currentPath].join(path.delimiter);
