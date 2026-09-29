@@ -105,6 +105,11 @@ class WorkspaceInspector {
       return;
     }
 
+    // Skip files that have already been replaced by the firewall quarantine stub
+    if (content.includes('[AI AGENT FIREWALL] - FILE QUARANTINED')) {
+      return;
+    }
+
     const relPath = path.relative(this.cwd, fullPath);
     this.stats.filesInspected++;
 
@@ -127,6 +132,9 @@ class WorkspaceInspector {
         detail: 'Risk score exceeded firewall threshold.',
       };
 
+      // Ring terminal alert bell
+      process.stdout.write('\x07');
+
       if (topThreat.id === 'LOOP-001') {
         this.stats.loopsCaught++;
         logEvent('LOOP', `Agent loop detected on ${relPath}`, topThreat.detail);
@@ -135,7 +143,7 @@ class WorkspaceInspector {
       }
 
       // Quarantine if configured
-      if (this.config.quarantineBlocked) {
+      if (this.config.quarantineBlocked !== false) {
         this.quarantine(fullPath, relPath, topThreat);
       }
     }
@@ -201,13 +209,14 @@ throw new Error("[AI AGENT FIREWALL] Execution aborted: This file contains quara
       }
 
       fs.writeFileSync(fullPath, warningText, 'utf8');
-      logEvent('QUARANTINE', `Neutralized malicious write to ${relPath}`, `Safely isolated to ${this.config.quarantineDir}/${backupName}`);
+      logEvent('QUARANTINE', `Neutralized malicious write to ${relPath}`, `Safely isolated to ${this.config.quarantineDir || '.firewall-quarantine'}/${backupName}`);
     } catch (err) {
       console.error(`[firewall] Quarantine failed:`, err.message);
     }
   }
 
-  start() {
+  start(options = {}) {
+    const embedded = options.embedded === true;
     statusLine('WATCH', this.cwd, this.config.mode === 'observe' ? 'OBSERVE ONLY' : 'ZERO-TRUST ENFORCING');
     this.isWatching = true;
 
@@ -239,24 +248,31 @@ throw new Error("[AI AGENT FIREWALL] Execution aborted: This file contains quara
       this.watcher.on('change', (filePath) => this.inspectFile(filePath, 'modify'));
     } else {
       // Native recursive fs.watch fallback
-      let debounceTimer = null;
+      const debounceMap = new Map();
       this.watcher = fs.watch(this.cwd, { recursive: true }, (eventType, filename) => {
         if (!filename) return;
         const fullPath = path.join(this.cwd, filename);
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
+        if (debounceMap.has(fullPath)) {
+          clearTimeout(debounceMap.get(fullPath));
+        }
+        const timer = setTimeout(() => {
+          debounceMap.delete(fullPath);
           this.inspectFile(fullPath, eventType);
-        }, 150);
+        }, 120);
+        debounceMap.set(fullPath, timer);
       });
     }
 
-    process.on('SIGINT', () => {
-      this.stop();
-      process.exit(0);
-    });
+    if (!embedded) {
+      process.on('SIGINT', () => {
+        this.stop();
+        process.exit(0);
+      });
+    }
   }
 
   stop() {
+    if (!this.isWatching) return;
     if (this.watcher) {
       if (typeof this.watcher.close === 'function') {
         this.watcher.close();

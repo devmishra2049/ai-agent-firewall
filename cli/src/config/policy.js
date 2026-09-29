@@ -34,6 +34,7 @@ const DEFAULT_CONFIG = {
     enabled: false,
     backendUrl: 'https://ai-agent-firewall.onrender.com',
   },
+  customAgents: [],
 };
 
 function loadConfig(cwd = process.cwd()) {
@@ -49,6 +50,20 @@ function loadConfig(cwd = process.cwd()) {
   return DEFAULT_CONFIG;
 }
 
+function saveCustomAgent(agentObj, cwd = process.cwd()) {
+  const configPath = path.join(cwd, '.firewallrc.json');
+  const current = loadConfig(cwd);
+  const customAgents = Array.isArray(current.customAgents) ? [...current.customAgents] : [];
+  customAgents.push(agentObj);
+  const updated = { ...current, customAgents };
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(updated, null, 2), 'utf8');
+  } catch {
+    // Ignore write errors in read-only dirs
+  }
+  return updated;
+}
+
 function initConfigFile(cwd = process.cwd()) {
   const targetPath = path.join(cwd, '.firewallrc.json');
   if (fs.existsSync(targetPath)) {
@@ -62,5 +77,6 @@ function initConfigFile(cwd = process.cwd()) {
 module.exports = {
   DEFAULT_CONFIG,
   loadConfig,
+  saveCustomAgent,
   initConfigFile,
 };

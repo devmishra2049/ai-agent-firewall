@@ -10,6 +10,7 @@ const { banner, statusLine, threatCard, summaryBox, badge, c } = require('../src
 const { ThreatHunter } = require('../src/threats/hunter');
 const { WorkspaceInspector } = require('../src/watcher/inspector');
 const { runAgent } = require('../src/harness/runner');
+const { startInteractiveFirewall } = require('../src/harness/launcher');
 const { loadConfig, initConfigFile } = require('../src/config/policy');
 
 const VERSION = '1.0.0';
@@ -18,14 +19,14 @@ function printHelp() {
   banner();
   console.log(`
   ${c.bold}USAGE:${c.reset}
-    ${c.cyan}ai-firewall${c.reset} <command> [options]
-    ${c.cyan}ai-agent-firewall${c.reset} <command> [options]
-    ${c.cyan}aaf${c.reset} <command> [options]
+    ${c.cyan}ai-firewall${c.reset} [command] [options]
+    ${c.cyan}ai-agent-firewall${c.reset} [command] [options]
+    ${c.cyan}aaf${c.reset} [command] [options]
 
   ${c.bold}COMMANDS:${c.reset}
-    ${c.bold}watch${c.reset} [dir]            Start real-time terminal inspector for AI agents (Claude, Cursor, Aider)
+    ${c.bold}watch / start${c.reset} [dir]    Start 1-Terminal Firewall Watcher & Interactive Coding Agent Selector
+    ${c.bold}run${c.reset} [command...]       Launch a coding agent directly inside the firewall isolation perimeter
     ${c.bold}scan${c.reset} <path>            Perform deep security scan on a file or directory
-    ${c.bold}run${c.reset} <command...>       Execute an agent command inside the firewall isolation perimeter
     ${c.bold}test${c.reset} "code or prompt"  Test code against capability policies & sandbox execution
     ${c.bold}init${c.reset}                   Create default ${c.dim}.firewallrc.json${c.reset} policy file
     ${c.bold}status${c.reset}                 Check firewall engine posture & cloud backend connectivity
@@ -205,7 +206,7 @@ function main() {
   const args = process.argv.slice(2);
   const config = loadConfig();
 
-  if (args.length === 0 || args.includes('-h') || args.includes('--help')) {
+  if (args.includes('-h') || args.includes('--help') || args[0] === 'help') {
     printHelp();
     return;
   }
@@ -215,17 +216,30 @@ function main() {
     return;
   }
 
+  if (args.length === 0) {
+    startInteractiveFirewall(process.cwd(), config);
+    return;
+  }
+
   const command = args[0];
 
   switch (command) {
+    case 'start':
     case 'watch': {
-      banner();
-      const targetDir = args[1] ? path.resolve(process.cwd(), args[1]) : process.cwd();
-      const inspector = new WorkspaceInspector({
-        cwd: targetDir,
-        config,
-      });
-      inspector.start();
+      const nonFlagArgs = args.slice(1).filter((a) => !a.startsWith('-'));
+      const targetDir = nonFlagArgs[0] ? path.resolve(process.cwd(), nonFlagArgs[0]) : process.cwd();
+      const passiveOnly = args.includes('--passive') || args.includes('--no-menu');
+
+      if (passiveOnly) {
+        banner();
+        const inspector = new WorkspaceInspector({
+          cwd: targetDir,
+          config,
+        });
+        inspector.start();
+      } else {
+        startInteractiveFirewall(targetDir, config);
+      }
       break;
     }
 
