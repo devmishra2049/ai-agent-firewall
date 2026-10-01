@@ -28,3 +28,17 @@ venv/
 # AI Agent Firewall Quarantine & Generated Artifacts
 .firewall-quarantine/
 **/.firewall-quarantine/
+
+# Interactive Agent Sessions & Scratch Files
+.aider*
+*.quarantine
+backdoor.py
+dynamic_calc.py
+env_reader.py
+fibonacci.py
+math_tools.py
+net_debugger.py
+palindrome.py
+run_*.py
+system_metrics.py
+

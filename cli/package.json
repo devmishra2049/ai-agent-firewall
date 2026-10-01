@@ -10,7 +10,8 @@
     "agent-firewall": "./bin/agent-firewall.js"
   },
   "scripts": {
-    "start": "node ./bin/agent-firewall.js"
+    "start": "node ./bin/agent-firewall.js",
+    "test": "node --test test/**/*.test.js"
   },
   "keywords": [
     "ai-agent",
