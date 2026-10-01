@@ -41,4 +41,5 @@ net_debugger.py
 palindrome.py
 run_*.py
 system_metrics.py
+config_*.py
 
