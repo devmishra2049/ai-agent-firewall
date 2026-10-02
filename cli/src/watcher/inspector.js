@@ -13,7 +13,7 @@ class WorkspaceInspector {
   constructor(options = {}) {
     this.cwd = options.cwd || process.cwd();
     this.config = options.config || {};
-    this.hunter = new ThreatHunter();
+    this.hunter = new ThreatHunter({ workspaceRoot: this.cwd });
     this.stats = {
       filesInspected: 0,
       allowed: 0,

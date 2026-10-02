@@ -1,0 +1,42 @@
+{
+  "name": "ai-agent-firewall",
+  "version": "1.0.0",
+  "description": "100% Pure Dynamic Behavioral Intelligence Firewall, WebAssembly Sandbox & Runtime Guard for AI Coding Agents",
+  "main": "./bin/agent-firewall.js",
+  "bin": {
+    "aaf": "./bin/agent-firewall.js",
+    "agent-firewall": "./bin/agent-firewall.js",
+    "ai-firewall": "./bin/agent-firewall.js",
+    "ai-agent-firewall": "./bin/agent-firewall.js"
+  },
+  "scripts": {
+    "start": "node ./bin/agent-firewall.js",
+    "test": "node cli/test/runner.js",
+    "test:unit": "node --test cli/test/inode-profiler.test.js"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devmishra2049/ai-agent-firewall.git"
+  },
+  "keywords": [
+    "ai-agent",
+    "firewall",
+    "security",
+    "antigravity",
+    "claude-code",
+    "cursor",
+    "aider",
+    "codex",
+    "threat-hunter",
+    "ast",
+    "sandbox"
+  ],
+  "author": "Devesh Prakash Mishra",
+  "license": "Apache-2.0"
+}

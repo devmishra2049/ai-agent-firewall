@@ -90,7 +90,7 @@ function runShim() {
     process.exit(127);
   }
 
-  const hunter = new ThreatHunter();
+  const hunter = new ThreatHunter({ workspaceRoot: cwd });
   const config = loadConfig(cwd);
 
   // 1. Inspect command-line arguments (e.g. bash -c "...", python3 -c "...", rm -rf, curl, etc.)

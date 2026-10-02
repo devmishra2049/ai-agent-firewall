@@ -300,7 +300,7 @@ function askQuestion(rl, query) {
  * Spawn the chosen agent inside the active firewall watcher & subprocess shim perimeter
  */
 function spawnAgentInFirewall(agentItem, inspector, targetDir, config, onAgentExit) {
-  const hunter = new ThreatHunter();
+  const hunter = new ThreatHunter({ workspaceRoot: targetDir });
 
   // 1. Preflight check on the launch command itself
   const cmdCheck = hunter.scan(agentItem.cmd, 'agent-launch');

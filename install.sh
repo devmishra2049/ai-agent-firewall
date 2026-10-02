@@ -66,28 +66,34 @@ else
         if [ -f "$HOME/.bashrc" ]; then
             echo 'export PATH="$PATH:$HOME/.local/bin"' >> "$HOME/.bashrc"
         fi
+        if [ -f "$HOME/.config/fish/config.fish" ]; then
+            echo 'fish_add_path $HOME/.local/bin' >> "$HOME/.config/fish/config.fish"
+        fi
         export PATH="$PATH:$TARGET_BIN_DIR"
     fi
 fi
 
 # Create symlinks for all command aliases
-ln -sf "$INSTALL_DIR/cli/bin/agent-firewall.js" "$TARGET_BIN_DIR/ai-firewall"
-ln -sf "$INSTALL_DIR/cli/bin/agent-firewall.js" "$TARGET_BIN_DIR/ai-agent-firewall"
-ln -sf "$INSTALL_DIR/cli/bin/agent-firewall.js" "$TARGET_BIN_DIR/aaf"
-ln -sf "$INSTALL_DIR/cli/bin/agent-firewall.js" "$TARGET_BIN_DIR/agent-firewall"
+chmod +x "$INSTALL_DIR/bin/agent-firewall.js" 2>/dev/null || true
+ln -sf "$INSTALL_DIR/bin/agent-firewall.js" "$TARGET_BIN_DIR/ai-firewall"
+ln -sf "$INSTALL_DIR/bin/agent-firewall.js" "$TARGET_BIN_DIR/ai-agent-firewall"
+ln -sf "$INSTALL_DIR/bin/agent-firewall.js" "$TARGET_BIN_DIR/aaf"
+ln -sf "$INSTALL_DIR/bin/agent-firewall.js" "$TARGET_BIN_DIR/agent-firewall"
 
 echo -e "\n${GREEN}${BOLD}✓ AI Agent Firewall successfully installed!${NC}"
-echo -e "Binaries linked to: ${BOLD}$TARGET_BIN_DIR/ai-firewall${NC} (aliases: ${BOLD}ai-agent-firewall${NC}, ${BOLD}aaf${NC})\n"
+echo -e "Binaries linked to: ${BOLD}$TARGET_BIN_DIR/aaf${NC} (aliases: ${BOLD}ai-firewall${NC}, ${BOLD}agent-firewall${NC})\n"
 
 if [[ ":$PATH:" != *":$TARGET_BIN_DIR:"* ]]; then
-    echo -e "${RED}Note: $TARGET_BIN_DIR is not in your \$PATH.${NC}"
-    echo -e "Add this to your ~/.zshrc or ~/.bashrc:"
+    echo -e "${RED}Note: $TARGET_BIN_DIR is not currently in your \$PATH.${NC}"
+    echo -e "Add this to your shell config file (~/.zshrc or ~/.bashrc):"
     echo -e "  export PATH=\"\$PATH:$TARGET_BIN_DIR\"\n"
 fi
 
-echo -e "${CYAN}Try it right now:${NC}"
-echo -e "  ${BOLD}agent-firewall --help${NC}        Show all commands"
-echo -e "  ${BOLD}agent-firewall watch${NC}         Start real-time threat watcher"
-echo -e "  ${BOLD}agent-firewall scan .${NC}        Scan current workspace for malicious code"
-echo -e "  ${BOLD}agent-firewall run claude${NC}    Wrap Claude Code under active firewall defense"
+echo -e "${CYAN}${BOLD}Quickstart Commands:${NC}"
+echo -e "  ${BOLD}aaf${NC}                  Open interactive 1-terminal coding agent picker"
+echo -e "  ${BOLD}aaf run agy${NC}          Launch Google Antigravity CLI inside firewall"
+echo -e "  ${BOLD}aaf run claude${NC}       Launch Anthropic Claude Code inside firewall"
+echo -e "  ${BOLD}aaf run aider${NC}        Launch Aider AI Pair Programmer inside firewall"
+echo -e "  ${BOLD}aaf watch .${NC}          Watch current workspace for rogue agent tool calls"
+echo -e "  ${BOLD}aaf test \"code\"${NC}      Test any prompt or payload against behavioral brain"
 echo ""

