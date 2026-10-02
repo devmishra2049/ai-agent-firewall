@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "mode": "enforce",
+  "blockOnRiskScore": 80,
+  "quarantineBlocked": true,
+  "quarantineDir": ".firewall-quarantine",
+  "soundAlerts": false,
+  "ignoredPaths": [
+    "node_modules/**",
+    ".git/**",
+    "target/**",
+    "dist/**",
+    "build/**",
+    ".venv/**",
+    "__pycache__/**",
+    ".firewall-quarantine/**"
+  ],
+  "protectedPaths": [
+    ".env",
+    ".env.*",
+    "**/.ssh/**",
+    "**/id_rsa*",
+    "package.json",
+    "Cargo.toml"
+  ],
+  "cloudSync": {
+    "enabled": false,
+    "backendUrl": "https://ai-agent-firewall.onrender.com"
+  },
+  "customAgents": [
+    {
+      "name": "Antigravity",
+      "cmd": "agy"
+    }
+  ]
+}
