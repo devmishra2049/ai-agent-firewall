@@ -531,6 +531,25 @@ class BehavioralBrain {
       });
     }
 
+    // Workspace Boundary Traversal / Directory Escape
+    if ((profileData.boundaryViolation || astData.capabilities.boundaryEscape) && riskScore < 85) {
+      const score = 88;
+      riskScore = Math.max(riskScore, score);
+      const reason = 'Directory traversal / workspace escape attempt detected in filesystem operations';
+      reasons.push(reason);
+      threats.push({
+        id: 'DYN-BOUND-001',
+        category: 'Boundary Traversal',
+        title: 'Workspace Escape / Directory Traversal Intercepted',
+        severity: 'HIGH',
+        riskScore: score,
+        detail: reason,
+        action: 'Block directory traversal and quarantine script',
+        line: 1,
+        snippet: code.trim().split('\n').find((l) => l.includes('..')) || code.trim().split('\n')[0] || '',
+      });
+    }
+
     // Benign precision safeguard: if no dangerous runtime sinks or capabilities triggered,
     // compute weighted baseline score capped well below 50 (ALLOW)
     if (threats.length === 0) {

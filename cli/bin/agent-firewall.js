@@ -67,8 +67,9 @@ function handleScan(targetPath) {
     process.exit(1);
   }
 
-  const hunter = new ThreatHunter();
   const stat = fs.statSync(fullPath);
+  const targetRoot = stat.isDirectory() ? fullPath : path.dirname(fullPath);
+  const hunter = new ThreatHunter({ workspaceRoot: targetRoot });
 
   let filesToScan = [];
   if (stat.isDirectory()) {
@@ -103,7 +104,7 @@ function handleScan(targetPath) {
       continue;
     }
 
-    const rel = path.relative(process.cwd(), file);
+    const rel = path.relative(targetRoot, file);
     const result = hunter.scan(content, rel);
 
     if (result.verdict === 'BLOCKED') {

@@ -483,6 +483,7 @@ class AstAnalyzer {
       fdRedirect: false,
       dynamicExec: false,
       destructiveCmd: false,
+      boundaryEscape: false,
     };
 
     // Check file reads and inspect target filename
@@ -557,6 +558,15 @@ class AstAnalyzer {
     if (/(?:^|[^A-Za-z0-9_$])(eval|exec|compile)\s*\(/.test(finalResolvedCode)) {
       capabilities.dynamicExec = true;
       suspiciousCalls.push('dynamic_exec');
+    }
+
+    // Check directory traversal / boundary escape in filesystem operations
+    if (
+      /(["']\.\.[\/\\]|["']\.\.["']|\.\.[\/\\]\.\.)/.test(finalResolvedCode) &&
+      /\b(open|read|write|copy|copy2|copytree|mkdir|rmdir|remove|unlink|Path|resolve|os\.path)\b/.test(finalResolvedCode)
+    ) {
+      capabilities.boundaryEscape = true;
+      suspiciousCalls.push('path_traversal_boundary_escape');
     }
 
     // Multi-hop taint flow detection:
